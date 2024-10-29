@@ -1,0 +1,81 @@
+@page "/products/create"
+@using Catalog.Domain.Enums
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using Catalog.Domain.Entities
+@inject Catalog.Application.UseCases.Interfaces.IRegisterNewProduct RegisterNewProduct
+@inject NavigationManager NavigationManager
+
+@rendermode InteractiveServer
+@*@attribute [Authorize]*@
+
+<PageTitle>Inserir</PageTitle>
+
+<h1>Inserir</h1>
+
+<h2>Produto</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Product" OnValidSubmit="AddProduct" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+            <div class="mb-3">
+                <label for="name" class="form-label">Nome:</label> 
+                <InputText id="name" @bind-Value="Product.Name" class="form-control" /> 
+                <ValidationMessage For="() => Product.Name" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="saleprice" class="form-label">Preço de Venda:</label> 
+                <InputNumber id="saleprice" @bind-Value="Product.SalePrice" class="form-control" /> 
+                <ValidationMessage For="() => Product.SalePrice" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="description" class="form-label">Descrição:</label> 
+                <InputText id="description" @bind-Value="Product.Description" class="form-control" /> 
+                <ValidationMessage For="() => Product.Description" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="quantity" class="form-label">Quantidade:</label> 
+                <InputNumber id="quantity" @bind-Value="Product.Quantity" class="form-control" /> 
+                <ValidationMessage For="() => Product.Quantity" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="type" class="form-label">Tipo:</label> 
+                <select id="type" @bind="SelectedType" class="form-select">
+                    @foreach (var type in Enum.GetValues(typeof(ProductType)))
+                    {
+                        <option value="@((int)type)">
+                            @ProductTypeHelper.GetTypeName((ProductType)type)</option>
+                    }
+                </select>
+                <ValidationMessage For="() => SelectedType" class="text-danger" />
+            </div>        
+            <button type="submit" class="btn btn-primary">Inserir</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/products">Voltar a Lista</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Product Product { get; set; } = new();
+
+    private int SelectedType { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        SelectedType = (int)Product.Type;
+    }
+
+    private async Task AddProduct()
+    {
+        Product.Type = (ProductType)SelectedType;
+        await RegisterNewProduct.Execute(Product);
+        NavigationManager.NavigateTo("/products");
+    }
+}

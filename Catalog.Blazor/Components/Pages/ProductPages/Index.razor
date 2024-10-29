@@ -1,0 +1,113 @@
+@page "/products"
+@using Catalog.Domain.Enums
+@using Microsoft.EntityFrameworkCore
+@using Catalog.Domain.Entities
+@using Catalog.Infra
+@inject Catalog.Application.UseCases.Interfaces.IListProductsPerPage ListProductsPerPage
+
+@rendermode InteractiveServer
+
+@*@attribute [Authorize]*@
+
+<PageTitle>Catalogo</PageTitle>
+
+<h1>Catalogo de Produtos</h1>
+
+@if (Products is null)
+{
+    <p><em>Carregando...</em></p>
+}
+else
+{
+    <p>
+    <a href="products/create">Inserir novo</a>
+</p>
+
+    <table class="table">
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>Preço de Venda</th>
+            <th>Descrição</th>
+            <th>Quantidade</th>
+            <th>Tipo</th>
+            <th>Data de Cadastro</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var product in Products)
+            {
+                <tr>
+                    <td>@product.Name</td>
+                    <td>@product.SalePrice</td>
+                    <td>@product.Description</td>
+                    <td>@product.Quantity</td>
+                    <td>@ProductTypeHelper.GetTypeName(product.Type)</td>
+                    <td>@product.RegistrationDate.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        <a href="@($"products/edit?id={product.Id}")">Editar</a> |
+                        <a href="@($"products/details?id={product.Id}")">Detalhes</a> |
+                        <a href="@($"products/delete?id={product.Id}")">Deletar</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (TotalPages > 1)
+    {
+        var prevDisabled = page == 1 ? "disabled" : "";
+        var nextDisabled = page == TotalPages ? "disabled" : "";
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @prevDisabled">
+                    <a class="page-link" @onclick="@(() => GoToPage(1))">Primeira</a>
+                </li>
+                <li class="page-item @prevDisabled">
+                    <a class="page-link" @onclick="@(() => GoToPage(page - 1))">Anterior</a>
+                </li>
+                @{
+                    int start = Math.Max(1, page - 2);
+                    int end = Math.Min(TotalPages, page + 2);
+                }
+                @for (int i = start; i <= end; i++)
+                {
+
+                    int localPageNumber = i;
+                    <li class="page-item @(page == localPageNumber ? "active" : "")">
+                        <a class="page-link" @onclick="@(() => GoToPage(localPageNumber))">@localPageNumber</a>
+                    </li>
+                }
+                @if (end < TotalPages)
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                }
+                <li class="page-item @nextDisabled">
+                    <a class="page-link" @onclick="@(() => GoToPage(page + 1))">Próxima</a>
+                </li>
+                <li class="page-item @nextDisabled">
+                    <a class="page-link" @onclick="@(() => GoToPage(TotalPages))">Última</a>
+                </li>
+            </ul>
+        </nav>
+    }
+}
+@code {
+    private int page = 1;
+    private const int pageSise = 5;
+    private void GoToPage(int pageNumber) => page = pageNumber;
+    private int TotalPages => ListProductsPerPage.TotalPages(pageSise);
+    IEnumerable<Product> Products => ListProductsPerPage.Execute(page, pageSise);
+
+    protected override void OnInitialized()
+    {
+        if (page <= 0)
+            page = 1;
+
+        if (page > TotalPages)
+            page = TotalPages;
+    }
+}

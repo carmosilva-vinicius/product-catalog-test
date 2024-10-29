@@ -1,0 +1,115 @@
+@page "/products/edit"
+@using Catalog.Domain.Enums
+@using Microsoft.EntityFrameworkCore
+@using Catalog.Domain.Entities
+@inject Catalog.Application.UseCases.Interfaces.IUpdateProduct UpdateProduct
+@inject Catalog.Application.UseCases.Interfaces.IGetProductDetails GetProductDetails
+@inject NavigationManager NavigationManager
+
+@rendermode InteractiveServer
+
+@*@attribute [Authorize]*@
+
+<PageTitle>Editar</PageTitle>
+
+<h1>Editar</h1>
+
+<h2>Produto</h2>
+<hr />
+@if (Product is null)
+{
+    <p><em>Carregando...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Product" OnValidSubmit="UpdateAsync" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <input type="hidden" name="Product.Id" value="@Product.Id" />
+                <div class="mb-3">
+                    <label for="name" class="form-label">Nome:</label>
+                    <InputText id="name" @bind-Value="Product.Name" class="form-control" />
+                    <ValidationMessage For="() => Product.Name" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="saleprice" class="form-label">Preço de Venda:</label>
+                    <InputNumber id="saleprice" @bind-Value="Product.SalePrice" class="form-control" />
+                    <ValidationMessage For="() => Product.SalePrice" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Descrição:</label>
+                    <InputText id="description" @bind-Value="Product.Description" class="form-control" />
+                    <ValidationMessage For="() => Product.Description" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="quantity" class="form-label">Quantidade:</label>
+                    <InputNumber id="quantity" @bind-Value="Product.Quantity" class="form-control" />
+                    <ValidationMessage For="() => Product.Quantity" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="type" class="form-label">Tipo:</label>
+                    <select id="type" @bind="SelectedType" class="form-select">
+                        @foreach (var type in Enum.GetValues(typeof(ProductType)))
+                        {
+                            <option value="@((int)type)" selected="@(SelectedType == (int)type)">
+                                @ProductTypeHelper.GetTypeName((ProductType)type)</option>
+                        }
+                    </select>
+                    <ValidationMessage For="() => SelectedType" class="text-danger" /> 
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/products">Voltar para a Lista</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private Guid Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private Product? Product { get; set; }
+
+    private int SelectedType { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Product ??= await GetProductDetails.Execute(Id);
+
+        if (Product is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+
+        SelectedType = (int)Product!.Type;
+    }
+
+    private async Task UpdateAsync()
+    {
+        Product!.Type = (ProductType)SelectedType;
+
+        try
+        {
+            await UpdateProduct.Execute(Product);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!(await GetProductDetails.Execute(Product!.Id) == null))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/products");
+    }
+}
